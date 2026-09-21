@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "AI Asset",
+  "properties": {
+    "asset_id": {
+      "type": "string"
+    },
+    "asset_type": {
+      "type": "string",
+      "enum": ["Agent", "Model", "Instructions", "Tools", "Identity", "Permissions", "Runtime", "APIs", "MCP_Server", "Data_Source", "Vector_Store", "External_Service"]
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "discovered_tools": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "identities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "owasp_llm": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["asset_id", "asset_type", "name"]
+}

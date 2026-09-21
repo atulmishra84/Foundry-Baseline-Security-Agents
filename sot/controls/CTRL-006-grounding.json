@@ -1,0 +1,6 @@
+{
+  "control_id": "CTRL-006-Grounding",
+  "name": "Grounded answers with citations",
+  "mitigates": ["T-009"],
+  "description": "Require source citations for clinical or financial claims; refuse when evidence is missing."
+}

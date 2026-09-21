@@ -1,0 +1,6 @@
+{
+  "control_id": "CTRL-001-Input-Validation",
+  "name": "Input validation and instruction hierarchy",
+  "mitigates": ["T-001", "T-007"],
+  "description": "Treat user text as data, enforce a fixed system policy, and reject instruction-override patterns."
+}

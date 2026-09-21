@@ -1,0 +1,9 @@
+{
+  "threat_id": "T-004",
+  "name": "Data and Model Poisoning",
+  "description": "Adversarial content in retrieved or training data changes model or agent behavior.",
+  "category": "Integrity",
+  "owasp_llm": "LLM04",
+  "affected_components": ["Vector_Store", "Data_Source", "Model"],
+  "risk_score_baseline": 7.5
+}

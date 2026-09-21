@@ -1,0 +1,9 @@
+{
+  "threat_id": "T-003",
+  "name": "Supply Chain",
+  "description": "Untrusted models, plugins, MCP servers, or packages alter agent behavior.",
+  "category": "Supply Chain",
+  "owasp_llm": "LLM03",
+  "affected_components": ["Model", "MCP_Server", "External_Service"],
+  "risk_score_baseline": 7.0
+}

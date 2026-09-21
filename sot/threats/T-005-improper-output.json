@@ -1,0 +1,9 @@
+{
+  "threat_id": "T-005",
+  "name": "Improper Output Handling",
+  "description": "Downstream systems treat model output as trusted, enabling injection into code, SQL, or HTML.",
+  "category": "Output Handling",
+  "owasp_llm": "LLM05",
+  "affected_components": ["Agent", "APIs", "Runtime"],
+  "risk_score_baseline": 7.0
+}

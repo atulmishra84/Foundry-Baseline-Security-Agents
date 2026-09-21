@@ -1,0 +1,9 @@
+{
+  "threat_id": "T-010",
+  "name": "Unbounded Consumption",
+  "description": "Missing quotas allow denial of wallet or denial of service through recursive or large tool use.",
+  "category": "Availability",
+  "owasp_llm": "LLM10",
+  "affected_components": ["Runtime", "APIs", "Model"],
+  "risk_score_baseline": 6.0
+}

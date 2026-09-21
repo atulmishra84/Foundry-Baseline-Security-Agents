@@ -1,0 +1,10 @@
+{
+  "framework_id": "NIST-AI-RMF",
+  "name": "NIST AI Risk Management Framework",
+  "functions": [
+    { "id": "GOVERN", "maps_to": ["T-003", "T-006"] },
+    { "id": "MAP", "maps_to": ["T-001", "T-004", "T-008"] },
+    { "id": "MEASURE", "maps_to": ["T-005", "T-009", "T-010"] },
+    { "id": "MANAGE", "maps_to": ["T-002", "T-007"] }
+  ]
+}

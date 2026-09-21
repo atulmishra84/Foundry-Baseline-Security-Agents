@@ -1,0 +1,6 @@
+{
+  "control_id": "CTRL-003-Output-Filtering",
+  "name": "Output filtering and encoding",
+  "mitigates": ["T-002", "T-005"],
+  "description": "Redact PII and secrets; encode output before it reaches interpreters or browsers."
+}

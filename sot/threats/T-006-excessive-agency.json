@@ -1,0 +1,9 @@
+{
+  "threat_id": "T-006",
+  "name": "Excessive Agency",
+  "description": "The agent identity or tools can take actions broader than the intended task.",
+  "category": "Authorization",
+  "owasp_llm": "LLM06",
+  "affected_components": ["Identity", "Permissions", "Tools"],
+  "risk_score_baseline": 9.0
+}

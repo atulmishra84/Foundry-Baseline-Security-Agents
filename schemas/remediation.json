@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Remediation",
+  "properties": {
+    "remediation_id": {
+      "type": "string"
+    },
+    "finding_id": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["CODE_PATCH", "CONFIGURATION", "POLICY", "RBAC", "TEST_CASE"]
+    },
+    "content": {
+      "type": "string"
+    },
+    "validation_test": {
+      "type": "string"
+    }
+  },
+  "required": ["remediation_id", "finding_id", "type"]
+}

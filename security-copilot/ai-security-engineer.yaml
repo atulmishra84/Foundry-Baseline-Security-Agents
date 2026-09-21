@@ -1,0 +1,113 @@
+Descriptor:
+  Name: Foundary.AISecurityEngineer
+  DisplayName: AI Security Engineer
+  Description: Discovers AI assets, maps OWASP LLM Top 10, and drafts findings and remediations from evidence only.
+
+SkillGroups:
+  - Format: AGENT
+    Skills:
+      - Name: AISecurityEngineer_Entrypoint
+        DisplayName: AI Security Engineer
+        Description: Entry point for AI system discovery, assessment, and remediation drafting
+        Interfaces:
+          - InteractiveAgent
+        Inputs:
+          - Name: TargetDescription
+            Description: Description or code excerpt of the authorized AI system to assess
+            Required: true
+        SuggestedPrompts:
+          - Prompt: Assess the authorized Healthcare AI Assistant. Discover assets, map OWASP LLM Top 10, and draft finding.json plus remediation.json from evidence only.
+            Title: Assess authorized healthcare demo
+            Personas:
+              - SecurityEngineer
+            IsStarterAgent: true
+          - Prompt: List T-001 through T-010 and which OWASP LLM IDs they map to. Do not invent extra threats.
+            Title: List SoT threats
+            Personas:
+              - SecurityEngineer
+            IsStarterAgent: true
+        Settings:
+          Model: gpt-4.1
+          Instructions: |
+            You are the AI Security Engineer Agent for the Foundary AI Security Agent Platform.
+
+            MISSION: Understand AI systems, identify security weaknesses, design controls, generate remediations, and validate fixes.
+
+            LIFECYCLE: Discover → Analyze → Threat Model → Assess → Recommend → Generate → Validate
+
+            PRINCIPLES:
+            1. Require evidence before concluding a vulnerability exists.
+            2. Risk scores 0-10: CRITICAL 9-10, HIGH 7-8, MEDIUM 4-6, LOW 0-3.
+            3. Map findings to T-001–T-010 / OWASP LLM Top 10 2025 (LLM01–LLM10).
+            4. Recommend least-privilege remediations.
+            5. Never invent vulnerabilities. If there is no vector store, mark LLM04 and LLM08 as NOT_APPLICABLE.
+
+            OUTPUT: Structured JSON matching asset, finding, and remediation schemas.
+            Use child skills MapOwaspLlmTop10 and DraftFindingAndRemediation when helpful.
+        ChildSkills:
+          - MapOwaspLlmTop10
+          - DraftFindingAndRemediation
+  - Format: GPT
+    Skills:
+      - Name: MapOwaspLlmTop10
+        DisplayName: Map OWASP LLM Top 10
+        Description: Return the OWASP LLM Top 10 2025 mapping used by Foundary SoT
+        Inputs:
+          - Name: AssetSummary
+            Description: Short description of the AI asset
+            Required: true
+        Settings:
+          ModelName: gpt-4.1
+          Template: |-
+            <|im_start|>system
+            Map the asset to OWASP LLM Top 10 2025 using only this catalog:
+            LLM01 Prompt Injection / T-001
+            LLM02 Sensitive Information Disclosure / T-002
+            LLM03 Supply Chain / T-003
+            LLM04 Data and Model Poisoning / T-004
+            LLM05 Improper Output Handling / T-005
+            LLM06 Excessive Agency / T-006
+            LLM07 System Prompt Leakage / T-007
+            LLM08 Vector and Embedding Weaknesses / T-008
+            LLM09 Misinformation / T-009
+            LLM10 Unbounded Consumption / T-010
+            If the asset has no vector store or embeddings, status for LLM04 and LLM08 is NOT_APPLICABLE.
+            Return JSON array of {owasp_id, threat_id, status, rationale}.
+            <|im_end|>
+            <|im_start|>user
+            {{AssetSummary}}
+            <|im_end|>
+      - Name: DraftFindingAndRemediation
+        DisplayName: Draft finding and remediation JSON
+        Description: Draft finding.json and remediation.json objects from evidence
+        Inputs:
+          - Name: Evidence
+            Description: Evidence text or observations
+            Required: true
+        Settings:
+          ModelName: gpt-4.1
+          Template: |-
+            <|im_start|>system
+            Draft JSON with keys findings (array) and remediations (array).
+            Finding fields: finding_id, asset, risk_score, risk_level, threats, controls, recommendations, evidence, owasp_llm.
+            Remediation fields: remediation_id, finding_id, description, type (CODE_PATCH|CONFIGURATION|POLICY|RBAC|TEST_CASE), content, validation_test.
+            Do not invent evidence. If evidence is thin, lower confidence and say UNTESTED.
+            <|im_end|>
+            <|im_start|>user
+            {{Evidence}}
+            <|im_end|>
+
+AgentDefinitions:
+  - Name: AISecurityEngineer
+    DisplayName: AI Security Engineer
+    Description: Discovers AI assets, maps OWASP LLM Top 10, and drafts remediations from evidence.
+    Publisher: Foundary
+    Product: AISecurity
+    RequiredSkillsets:
+      - Foundary.AISecurityEngineer
+    AgentSingleInstanceConstraint: Workspace
+    PromptSkill: Foundary.AISecurityEngineer.AISecurityEngineer_Entrypoint
+    Triggers:
+      - Name: Default
+        DefaultPeriodSeconds: 0
+        ProcessSkill: Foundary.AISecurityEngineer.AISecurityEngineer_Entrypoint

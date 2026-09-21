@@ -1,0 +1,9 @@
+{
+  "threat_id": "T-008",
+  "name": "Vector and Embedding Weaknesses",
+  "description": "Retrieval indexes can be poisoned or used to leak neighboring documents.",
+  "category": "Retrieval",
+  "owasp_llm": "LLM08",
+  "affected_components": ["Vector_Store", "Data_Source"],
+  "risk_score_baseline": 6.5
+}

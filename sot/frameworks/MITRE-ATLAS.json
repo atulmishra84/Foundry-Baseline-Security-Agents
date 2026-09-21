@@ -1,0 +1,12 @@
+{
+  "framework_id": "MITRE-ATLAS",
+  "name": "MITRE ATLAS (AI Threat mapping)",
+  "entries": [
+    { "id": "AML.T0051", "name": "LLM Prompt Injection", "threat_id": "T-001", "owasp_llm": "LLM01" },
+    { "id": "AML.T0024", "name": "Exfiltration via ML Inference API", "threat_id": "T-002", "owasp_llm": "LLM02" },
+    { "id": "AML.T0010", "name": "ML Supply Chain Compromise", "threat_id": "T-003", "owasp_llm": "LLM03" },
+    { "id": "AML.T0020", "name": "Poison Training Data", "threat_id": "T-004", "owasp_llm": "LLM04" },
+    { "id": "AML.T0048", "name": "Prompt Extraction", "threat_id": "T-007", "owasp_llm": "LLM07" },
+    { "id": "AML.T0040", "name": "ML Model Inference API Access", "threat_id": "T-006", "owasp_llm": "LLM06" }
+  ]
+}

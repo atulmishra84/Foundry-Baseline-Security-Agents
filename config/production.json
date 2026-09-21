@@ -1,0 +1,23 @@
+{
+  "environment": "production",
+  "authorized_targets": [
+    {
+      "name": "HealthcareAIAssistant",
+      "path": "tests/vulnerable-app/app.py",
+      "notes": "Local mock only. Never a customer tenant."
+    },
+    {
+      "name": "HealthcareAIAssistantHardened",
+      "path": "tests/vulnerable-app/hardened_app.py",
+      "notes": "Same authorized demo after CTRL-001/003/005. Retest target only."
+    }
+  ],
+  "soc_auto_containment": false,
+  "require_written_approval_for_containment": true,
+  "redact_phi_in_artifacts": true,
+  "prefer_azure_ad_for_openai": true,
+  "public_network_access": "hybrid-private-endpoints",
+  "containment_service_principal_id": "",
+  "containment_action": "disable_service_principal",
+  "power_bi_workspace": "Foundary AI Security"
+}

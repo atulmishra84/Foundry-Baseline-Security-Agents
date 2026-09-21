@@ -1,0 +1,8 @@
+.env
+output/
+.git
+__pycache__/
+*.pyc
+.DS_Store
+docs/*.pptx
+**/azure_deployment_output.json

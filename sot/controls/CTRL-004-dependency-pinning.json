@@ -1,0 +1,6 @@
+{
+  "control_id": "CTRL-004-Dependency-Pinning",
+  "name": "Pinned and reviewed dependencies",
+  "mitigates": ["T-003"],
+  "description": "Pin models, MCP servers, and packages; review new tools before grant."
+}

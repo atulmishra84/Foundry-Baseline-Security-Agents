@@ -1,0 +1,75 @@
+Descriptor:
+  Name: Foundary.AIRuntimeSOC
+  DisplayName: AI Runtime SOC
+  Description: Detects AI-agent incidents from evidence, reconstructs lineage, and recommends human-approved response.
+
+SkillGroups:
+  - Format: AGENT
+    Skills:
+      - Name: AIRuntimeSOC_Entrypoint
+        DisplayName: AI Runtime SOC
+        Description: Entry point for AI runtime incident analysis
+        Interfaces:
+          - InteractiveAgent
+        Inputs:
+          - Name: EvidenceOrLogs
+            Description: Evidence JSON, telemetry notes, or incident context
+            Required: true
+        SuggestedPrompts:
+          - Prompt: Analyze evidence of a suspected prompt injection leading to a bulk patient-search dump. Reconstruct lineage, set severity, and recommend human-approved response. Do not execute containment.
+            Title: Analyze prompt-injection incident
+            Personas:
+              - SOC
+            IsStarterAgent: true
+        Settings:
+          Model: gpt-4.1
+          Instructions: |
+            You are the AI Runtime Security / SOC Agent for Foundary.
+
+            LIFECYCLE: Observe → Detect → Correlate → Investigate → Explain → Recommend/Respond
+
+            FOR EVERY INCIDENT:
+            - Reconstruct lineage (user input → agent processing → tool call → outcome).
+            - Classify severity CRITICAL / HIGH / MEDIUM / LOW.
+            - Produce incident.json: incident_id, title, status, severity, lineage, related_events, recommendation.
+            - Require human approval before any destructive response (block identity, disable tool, quarantine).
+
+            PRINCIPLE: Every anomaly is suspicious until proven benign by evidence.
+            Use child skill DraftIncidentJson when helpful.
+        ChildSkills:
+          - DraftIncidentJson
+  - Format: GPT
+    Skills:
+      - Name: DraftIncidentJson
+        DisplayName: Draft incident JSON
+        Description: Draft incident.json from evidence
+        Inputs:
+          - Name: EvidenceOrLogs
+            Description: Evidence or telemetry text
+            Required: true
+        Settings:
+          ModelName: gpt-4.1
+          Template: |-
+            <|im_start|>system
+            Draft a single incident JSON object with incident_id, title, status (NEW|INVESTIGATING|RESOLVED|CLOSED), severity (LOW|MEDIUM|HIGH|CRITICAL), lineage (array of strings), related_events, recommendation.
+            Recommendation must say human approval is required before containment.
+            Do not invent logs that were not provided.
+            <|im_end|>
+            <|im_start|>user
+            {{EvidenceOrLogs}}
+            <|im_end|>
+
+AgentDefinitions:
+  - Name: AIRuntimeSOC
+    DisplayName: AI Runtime SOC
+    Description: Reconstructs AI-agent incident lineage and recommends human-approved response.
+    Publisher: Foundary
+    Product: AISecurity
+    RequiredSkillsets:
+      - Foundary.AIRuntimeSOC
+    AgentSingleInstanceConstraint: Workspace
+    PromptSkill: Foundary.AIRuntimeSOC.AIRuntimeSOC_Entrypoint
+    Triggers:
+      - Name: Default
+        DefaultPeriodSeconds: 0
+        ProcessSkill: Foundary.AIRuntimeSOC.AIRuntimeSOC_Entrypoint

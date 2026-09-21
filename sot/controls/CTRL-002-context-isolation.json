@@ -1,0 +1,6 @@
+{
+  "control_id": "CTRL-002-Context-Isolation",
+  "name": "Retrieved-context isolation",
+  "mitigates": ["T-004", "T-008", "ATT-002"],
+  "description": "Separate retrieved documents from executable instructions; do not follow directives found in data."
+}

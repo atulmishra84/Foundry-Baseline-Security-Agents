@@ -1,0 +1,9 @@
+{
+  "threat_id": "T-007",
+  "name": "System Prompt Leakage",
+  "description": "Hidden instructions or secrets in the system prompt can be extracted via user input.",
+  "category": "Information Disclosure",
+  "owasp_llm": "LLM07",
+  "affected_components": ["Instructions", "Agent"],
+  "risk_score_baseline": 6.5
+}

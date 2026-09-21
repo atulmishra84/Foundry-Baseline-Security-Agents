@@ -1,0 +1,6 @@
+{
+  "control_id": "CTRL-005-Least-Privilege",
+  "name": "Least-privilege agent identity",
+  "mitigates": ["T-006"],
+  "description": "Scope managed identity and tools to the minimum actions required for the task."
+}

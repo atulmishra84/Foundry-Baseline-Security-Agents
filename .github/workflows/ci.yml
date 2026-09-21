@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Schema, SoT, and production-control tests
+        run: python3 -m unittest tests.test_schemas tests.test_production_controls tests.test_retest tests.test_dashboard tests.test_entra_containment
+      - name: Validate Security Copilot manifests
+        run: python3 security-copilot/validate_manifests.py
+      - name: Closed-loop lifecycle
+        env:
+          AZURE_OPENAI_ENDPOINT: ""
+          AZURE_OPENAI_API_KEY: ""
+        run: python3 tests/mvp_lifecycle.py
+      - name: Require artifacts
+        run: |
+          test -f output/finding.json
+          test -f output/remediation.json
+          test -f output/owasp-coverage.json
+          test -f output/powerbi-risk-dataset.csv
+          test -f output/executive-dashboard.html
+          test -f output/a2a-messages.json
+          test -f output/retest.json
+          test -f output/framework-coverage.json

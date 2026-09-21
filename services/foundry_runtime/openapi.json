@@ -1,0 +1,60 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Foundry AI Security Runtime",
+    "version": "1.1.0"
+  },
+  "servers": [
+    {
+      "url": "https://ca-ai-security-runtime.wonderfulriver-296ea5d0.eastus.azurecontainerapps.io"
+    }
+  ],
+  "security": [{ "Authorization": [] }],
+  "components": {
+    "securitySchemes": {
+      "Authorization": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization"
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "Runtime health",
+        "security": [],
+        "responses": {
+          "200": { "description": "OK" }
+        }
+      }
+    },
+    "/v1/artifacts": {
+      "get": {
+        "operationId": "listArtifacts",
+        "summary": "List generated runtime artifacts",
+        "responses": {
+          "200": { "description": "OK" }
+        }
+      }
+    },
+    "/v1/lifecycle": {
+      "post": {
+        "operationId": "runLifecycle",
+        "summary": "Run discover-assess-remediate-validate-detect on the authorized demo only",
+        "parameters": [
+          {
+            "name": "retest",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean", "default": true }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Lifecycle result with finding, attack, incident, retest_blocked counts" }
+        }
+      }
+    }
+  }
+}

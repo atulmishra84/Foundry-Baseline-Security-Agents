@@ -1,0 +1,66 @@
+{
+  "framework_id": "OWASP-LLM-2025",
+  "name": "OWASP Top 10 for LLM Applications 2025",
+  "entries": [
+    {
+      "id": "LLM01",
+      "name": "Prompt Injection",
+      "threat_id": "T-001",
+      "control_id": "CTRL-001-Input-Validation"
+    },
+    {
+      "id": "LLM02",
+      "name": "Sensitive Information Disclosure",
+      "threat_id": "T-002",
+      "control_id": "CTRL-003-Output-Filtering"
+    },
+    {
+      "id": "LLM03",
+      "name": "Supply Chain",
+      "threat_id": "T-003",
+      "control_id": "CTRL-004-Dependency-Pinning"
+    },
+    {
+      "id": "LLM04",
+      "name": "Data and Model Poisoning",
+      "threat_id": "T-004",
+      "control_id": "CTRL-002-Context-Isolation"
+    },
+    {
+      "id": "LLM05",
+      "name": "Improper Output Handling",
+      "threat_id": "T-005",
+      "control_id": "CTRL-003-Output-Filtering"
+    },
+    {
+      "id": "LLM06",
+      "name": "Excessive Agency",
+      "threat_id": "T-006",
+      "control_id": "CTRL-005-Least-Privilege"
+    },
+    {
+      "id": "LLM07",
+      "name": "System Prompt Leakage",
+      "threat_id": "T-007",
+      "control_id": "CTRL-001-Input-Validation"
+    },
+    {
+      "id": "LLM08",
+      "name": "Vector and Embedding Weaknesses",
+      "threat_id": "T-008",
+      "control_id": "CTRL-002-Context-Isolation"
+    },
+    {
+      "id": "LLM09",
+      "name": "Misinformation",
+      "threat_id": "T-009",
+      "control_id": "CTRL-006-Grounding"
+    },
+    {
+      "id": "LLM10",
+      "name": "Unbounded Consumption",
+      "threat_id": "T-010",
+      "control_id": "CTRL-007-Rate-Limits"
+    }
+  ]
+}

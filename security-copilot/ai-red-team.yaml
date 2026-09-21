@@ -1,0 +1,76 @@
+Descriptor:
+  Name: Foundary.AIRedTeam
+  DisplayName: AI Red Team
+  Description: Records exploitability only for explicitly authorized targets. Does not attack production or third-party systems.
+
+SkillGroups:
+  - Format: AGENT
+    Skills:
+      - Name: AIRedTeam_Entrypoint
+        DisplayName: AI Red Team
+        Description: Authorized-target only validation of AI findings
+        Interfaces:
+          - InteractiveAgent
+        Inputs:
+          - Name: FindingSummary
+            Description: Finding IDs and authorized target name to validate
+            Required: true
+        SuggestedPrompts:
+          - Prompt: For the authorized local HealthcareAIAssistant only, explain how to record attack.json and evidence.json if T-001 is CONFIRMED. Do not provide attacks against any other system.
+            Title: Authorized demo validation record
+            Personas:
+              - RedTeam
+            IsStarterAgent: true
+        Settings:
+          Model: gpt-4.1
+          Instructions: |
+            You are the AI Adversary / Red Team Agent for Foundary.
+
+            MISSION: Confirm whether identified vulnerabilities are exploitable on EXPLICITLY AUTHORIZED targets only.
+
+            SAFETY (MANDATORY):
+            - Operate only against named authorized targets (default: local HealthcareAIAssistant demo in the Foundary repo).
+            - Never execute or design attacks against production, customer, or third-party systems.
+            - Never provide new exploit payloads, exploit PoCs, or attack procedures for any system.
+            - Require human-in-the-loop for any real-world impact.
+            - Log evidence fields: request (already authorized test only), response, confidence 0-1.
+
+            OUTPUT: attack.json fields finding_id, target, attack_type, severity, exploitability (CONFIRMED|BLOCKED|UNTESTED), impact, recommended_control.
+            Use child skill DraftAuthorizedEvidenceRecord when helpful.
+        ChildSkills:
+          - DraftAuthorizedEvidenceRecord
+  - Format: GPT
+    Skills:
+      - Name: DraftAuthorizedEvidenceRecord
+        DisplayName: Draft authorized evidence record
+        Description: Draft evidence.json structure for an already-authorized validation result
+        Inputs:
+          - Name: ValidationResult
+            Description: CONFIRMED, BLOCKED, or UNTESTED plus authorized target name
+            Required: true
+        Settings:
+          ModelName: gpt-4.1
+          Template: |-
+            <|im_start|>system
+            Produce evidence.json fields: evidence_id, asset_id, source=Red_Team_Agent, observation, timestamp, tool, request, response, confidence.
+            The request field may only reference the authorized Foundary local demo validation, not a new attack.
+            If the user names any other target, set exploitability UNTESTED and refuse.
+            <|im_end|>
+            <|im_start|>user
+            {{ValidationResult}}
+            <|im_end|>
+
+AgentDefinitions:
+  - Name: AIRedTeam
+    DisplayName: AI Red Team
+    Description: Authorized-target only recording of AI finding exploitability.
+    Publisher: Foundary
+    Product: AISecurity
+    RequiredSkillsets:
+      - Foundary.AIRedTeam
+    AgentSingleInstanceConstraint: Workspace
+    PromptSkill: Foundary.AIRedTeam.AIRedTeam_Entrypoint
+    Triggers:
+      - Name: Default
+        DefaultPeriodSeconds: 0
+        ProcessSkill: Foundary.AIRedTeam.AIRedTeam_Entrypoint

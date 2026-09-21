@@ -1,0 +1,9 @@
+{
+  "threat_id": "T-009",
+  "name": "Misinformation",
+  "description": "Ungrounded answers are treated as authoritative in high-stakes workflows.",
+  "category": "Integrity",
+  "owasp_llm": "LLM09",
+  "affected_components": ["Model", "Agent"],
+  "risk_score_baseline": 6.0
+}

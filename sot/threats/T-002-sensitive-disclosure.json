@@ -1,0 +1,9 @@
+{
+  "threat_id": "T-002",
+  "name": "Sensitive Information Disclosure",
+  "description": "The model or tools return secrets, PII, or regulated records beyond the requester's authorization.",
+  "category": "Data Exposure",
+  "owasp_llm": "LLM02",
+  "affected_components": ["Agent", "Tools", "Data_Source"],
+  "risk_score_baseline": 9.0
+}

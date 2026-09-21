@@ -1,0 +1,9 @@
+{
+  "threat_id": "T-001",
+  "name": "Prompt Injection",
+  "description": "An attacker manipulates the input to the AI model to override its intended instructions, bypass safety guardrails, or execute unauthorized actions.",
+  "category": "Input Manipulation",
+  "owasp_llm": "LLM01",
+  "affected_components": ["Model", "Agent"],
+  "risk_score_baseline": 8.5
+}

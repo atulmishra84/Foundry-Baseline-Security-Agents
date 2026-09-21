@@ -1,0 +1,6 @@
+{
+  "control_id": "CTRL-007-Rate-Limits",
+  "name": "Rate limits and token budgets",
+  "mitigates": ["T-010"],
+  "description": "Cap tokens, tool calls, and recursion depth per session and identity."
+}
