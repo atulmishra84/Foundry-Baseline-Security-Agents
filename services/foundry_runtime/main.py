@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import json
 import os
 import sys
@@ -9,6 +10,22 @@ import uuid
 
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
+
+# ── Application Insights tracing (optional — only active when env var is set) ──
+_APPINSIGHTS_CS = os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING", "")
+if _APPINSIGHTS_CS:
+    try:
+        from azure.monitor.opentelemetry import configure_azure_monitor
+        configure_azure_monitor(connection_string=_APPINSIGHTS_CS)
+    except ImportError:
+        pass  # Package not installed in local dev — silently skip
+
+try:
+    from opentelemetry import trace as _otel_trace
+    _tracer = _otel_trace.get_tracer("foundry-runtime")
+except ImportError:
+    _tracer = None  # type: ignore[assignment]
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, ROOT)
@@ -46,7 +63,7 @@ class NewlineJSONResponse(JSONResponse):
         return (json.dumps(content) + "\n").encode("utf-8")
 
 
-app = FastAPI(title="Foundry AI Security Runtime", version="1.1.0", default_response_class=NewlineJSONResponse)
+app = FastAPI(title="Foundry AI Security Runtime", version="1.2.0", default_response_class=NewlineJSONResponse)
 
 
 def _require_token(authorization: str | None) -> None:
@@ -98,6 +115,118 @@ def get_artifact(name: str, authorization: str | None = Header(default=None)):
     return FileResponse(path, media_type=media)
 
 
+class ContainmentApprovalRequest(BaseModel):
+    incident_id: str
+    approved_by: str = "security-engineer-ui"
+    action: str = "disable_service_principal"
+
+
+@app.get("/v1/stages")
+def get_stages(authorization: str | None = Header(default=None)) -> dict:
+    _require_token(authorization)
+    output = os.path.join(ROOT, "output")
+
+    asset_path = os.path.join(output, "asset.json")
+    finding_path = os.path.join(output, "finding.json")
+    attack_path = os.path.join(output, "attack.json")
+    incident_path = os.path.join(output, "incident.json")
+    retest_path = os.path.join(output, "retest.json")
+
+    has_asset = os.path.exists(asset_path)
+    has_finding = os.path.exists(finding_path)
+    has_attack = os.path.exists(attack_path)
+    has_incident = os.path.exists(incident_path)
+    has_retest = os.path.exists(retest_path)
+
+    findings_count = len(json.load(open(finding_path, encoding="utf-8"))) if has_finding else 0
+    attacks_count = len(json.load(open(attack_path, encoding="utf-8"))) if has_attack else 0
+    incidents_count = len(json.load(open(incident_path, encoding="utf-8"))) if has_incident else 0
+    retest_data = json.load(open(retest_path, encoding="utf-8")) if has_retest else {}
+
+    retest_status = "BLOCKED" if retest_data.get("blocked") else ("OPEN" if has_retest else "PENDING")
+
+    stages = [
+        {
+            "id": 1,
+            "name": "Asset Discovery",
+            "agent": "AI Security Engineer",
+            "status": "COMPLETE" if has_asset else "PENDING",
+            "summary": "Asset boundaries and tool registries mapped" if has_asset else "Awaiting discovery",
+            "artifact": "asset.json",
+        },
+        {
+            "id": 2,
+            "name": "Threat Assessment",
+            "agent": "AI Security Engineer",
+            "status": "COMPLETE" if has_finding else "PENDING",
+            "summary": f"{findings_count} findings evaluated against OWASP/ATLAS/NIST" if has_finding else "Awaiting assessment",
+            "artifact": "finding.json",
+        },
+        {
+            "id": 3,
+            "name": "Red Team Validation",
+            "agent": "AI Red Team",
+            "status": "COMPLETE" if has_attack else "PENDING",
+            "summary": f"{attacks_count} adversarial attacks tested with evidence" if has_attack else "Awaiting red team run",
+            "artifact": "attack.json",
+        },
+        {
+            "id": 4,
+            "name": "Runtime SOC Monitoring",
+            "agent": "AI Runtime SOC",
+            "status": "COMPLETE" if has_incident else "PENDING",
+            "summary": f"{incidents_count} incidents raised with event lineage" if has_incident else "Awaiting telemetry analysis",
+            "artifact": "incident.json",
+        },
+        {
+            "id": 5,
+            "name": "Remediation & Retest",
+            "agent": "AI Security Orchestrator",
+            "status": retest_status,
+            "summary": "Controls validated and held on hardened build" if retest_data.get("blocked") else "Awaiting retest verification",
+            "artifact": "retest.json",
+        },
+    ]
+    return {"stages": stages}
+
+
+@app.post("/v1/containment/approve")
+def approve_containment(
+    req: ContainmentApprovalRequest,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    _require_token(authorization)
+    approvals_dir = os.path.join(ROOT, "output", "approvals")
+    os.makedirs(approvals_dir, exist_ok=True)
+    approval_file = os.path.join(approvals_dir, f"{req.incident_id}.json")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    payload = {
+        "incident_id": req.incident_id,
+        "approved_by": req.approved_by,
+        "action": req.action,
+        "timestamp": timestamp,
+    }
+    with open(approval_file, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+
+    # Emit containment approval trace event to Application Insights
+    if _tracer:
+        with _tracer.start_as_current_span("containment.approve") as span:
+            span.set_attribute("incident_id", req.incident_id)
+            span.set_attribute("approved_by", req.approved_by)
+            span.set_attribute("action", req.action)
+            span.set_attribute("timestamp", timestamp)
+
+    return {
+        "status": "APPROVED",
+        "incident_id": req.incident_id,
+        "approval_file": approval_file,
+        "approved_by": req.approved_by,
+        "action": req.action,
+    }
+
+
 @app.get("/openapi-runtime.json")
 def openapi_runtime():
     path = os.path.join(os.path.dirname(__file__), "openapi.json")
@@ -113,60 +242,77 @@ def run_lifecycle(
     correlation_id = str(uuid.uuid4())
     artifacts: list[str] = []
 
-    asset = discover_assets(os.path.join(ROOT, "tests", "vulnerable-app", "app.py"))
-    artifacts.append(write_json("asset.json", asset))
-    publish(
-        from_agent="security-engineer",
-        to_agent="red-team",
-        intent="DISCOVERY_COMPLETE",
-        correlation_id=correlation_id,
-        payload_ref="asset.json",
-        summary=asset.get("name", ""),
-    )
+    span_ctx = _tracer.start_as_current_span("lifecycle.run") if _tracer else None  # type: ignore[union-attr]
+    try:
+        span = span_ctx.__enter__() if span_ctx else None  # type: ignore[union-attr]
+        if span and hasattr(span, "set_attribute"):
+            span.set_attribute("correlation_id", correlation_id)
+            span.set_attribute("retest", retest_controls)
 
-    findings = assess_asset(os.path.join(ROOT, "output", "asset.json"))
-    artifacts.append(write_json("finding.json", findings))
-    remediations = generate_remediations(os.path.join(ROOT, "output", "finding.json"))
-    artifacts.append(write_json("remediation.json", remediations))
-    coverage = build_coverage(os.path.join(ROOT, "output", "finding.json"))
-    artifacts.append(write_json("owasp-coverage.json", coverage))
-    artifacts.append(
-        write_json("framework-coverage.json", build_framework_coverage(os.path.join(ROOT, "output", "finding.json")))
-    )
+        asset = discover_assets(os.path.join(ROOT, "tests", "vulnerable-app", "app.py"))
+        artifacts.append(write_json("asset.json", asset))
+        publish(
+            from_agent="security-engineer",
+            to_agent="red-team",
+            intent="DISCOVERY_COMPLETE",
+            correlation_id=correlation_id,
+            payload_ref="asset.json",
+            summary=asset.get("name", ""),
+        )
 
-    attacks, evidence = execute_attack(
-        os.path.join(ROOT, "output", "finding.json"),
-        os.path.join(ROOT, "tests", "vulnerable-app", "app.py"),
-    )
-    artifacts.append(write_json("attack.json", attacks))
-    artifacts.append(write_json("evidence.json", evidence))
-    publish(
-        from_agent="red-team",
-        to_agent="runtime-soc",
-        intent="ATTACK_COMPLETE",
-        correlation_id=correlation_id,
-        payload_ref="evidence.json",
-        summary=f"{len(attacks)} attacks",
-    )
+        findings = assess_asset(os.path.join(ROOT, "output", "asset.json"))
+        artifacts.append(write_json("finding.json", findings))
+        remediations = generate_remediations(os.path.join(ROOT, "output", "finding.json"))
+        artifacts.append(write_json("remediation.json", remediations))
+        coverage = build_coverage(os.path.join(ROOT, "output", "finding.json"))
+        artifacts.append(write_json("owasp-coverage.json", coverage))
+        artifacts.append(
+            write_json("framework-coverage.json", build_framework_coverage(os.path.join(ROOT, "output", "finding.json")))
+        )
 
-    incidents = analyze_evidence(os.path.join(ROOT, "output", "evidence.json"))
-    artifacts.append(write_json("incident.json", incidents))
-    publish(
-        from_agent="runtime-soc",
-        to_agent="security-engineer",
-        intent="INCIDENT_RAISED",
-        correlation_id=correlation_id,
-        payload_ref="incident.json",
-        summary=f"{len(incidents)} incidents",
-    )
+        attacks, evidence = execute_attack(
+            os.path.join(ROOT, "output", "finding.json"),
+            os.path.join(ROOT, "tests", "vulnerable-app", "app.py"),
+        )
+        artifacts.append(write_json("attack.json", attacks))
+        artifacts.append(write_json("evidence.json", evidence))
+        publish(
+            from_agent="red-team",
+            to_agent="runtime-soc",
+            intent="ATTACK_COMPLETE",
+            correlation_id=correlation_id,
+            payload_ref="evidence.json",
+            summary=f"{len(attacks)} attacks",
+        )
 
-    retest_blocked = None
-    if retest_controls:
-        result = retest(os.path.join(ROOT, "output", "finding.json"))
-        artifacts.append(write_json("retest.json", result))
-        retest_blocked = bool(result.get("blocked"))
+        incidents = analyze_evidence(os.path.join(ROOT, "output", "evidence.json"))
+        artifacts.append(write_json("incident.json", incidents))
+        publish(
+            from_agent="runtime-soc",
+            to_agent="security-engineer",
+            intent="INCIDENT_RAISED",
+            correlation_id=correlation_id,
+            payload_ref="incident.json",
+            summary=f"{len(incidents)} incidents",
+        )
 
-    artifacts.append(_refresh_dashboard(correlation_id))
+        retest_blocked = None
+        if retest_controls:
+            result = retest(os.path.join(ROOT, "output", "finding.json"))
+            artifacts.append(write_json("retest.json", result))
+            retest_blocked = bool(result.get("blocked"))
+
+        artifacts.append(_refresh_dashboard(correlation_id))
+
+        if span and hasattr(span, "set_attribute"):
+            span.set_attribute("findings", len(findings))
+            span.set_attribute("attacks", len(attacks))
+            span.set_attribute("incidents", len(incidents))
+            span.set_attribute("retest_blocked", str(retest_blocked))
+    finally:
+        if span_ctx:
+            span_ctx.__exit__(None, None, None)  # type: ignore[union-attr]
+
     return {
         "correlation_id": correlation_id,
         "findings": len(findings),

@@ -1,0 +1,245 @@
+name: CD — Deploy to Azure AI Foundry
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "services/**"
+      - "tools/**"
+      - "agents/**"
+      - "sot/**"
+      - "schemas/**"
+      - "infrastructure/**"
+      - "Dockerfile"
+      - "requirements.txt"
+  workflow_dispatch:
+    inputs:
+      skip_live_test:
+        description: "Skip live agent smoke test"
+        required: false
+        default: "false"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  RESOURCE_GROUP: rg-ai-security-platform
+  LOCATION: eastus
+  CONTAINER_APP: ca-ai-security-runtime
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # Job 1: Build & Push Container Image to ACR
+  # ─────────────────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push Runtime Image
+    runs-on: ubuntu-latest
+    outputs:
+      acr_login_server: ${{ steps.acr-info.outputs.acr_login_server }}
+      image_tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC — no secrets stored)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get ACR info
+        id: acr-info
+        run: |
+          ACR_NAME=$(az acr list --resource-group "$RESOURCE_GROUP" --query "[0].name" -o tsv)
+          ACR_SERVER=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)
+          echo "acr_login_server=$ACR_SERVER" >> "$GITHUB_OUTPUT"
+          echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Set image tag
+        id: tag
+        run: echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push via ACR Tasks (linux/amd64)
+        run: |
+          az acr build \
+            --registry "${{ steps.acr-info.outputs.acr_name }}" \
+            --image "${CONTAINER_APP}:${{ steps.tag.outputs.tag }}" \
+            --image "${CONTAINER_APP}:latest" \
+            --platform linux/amd64 \
+            .
+
+  # ─────────────────────────────────────────────────────────────────
+  # Job 2: Deploy Container App
+  # ─────────────────────────────────────────────────────────────────
+  deploy-runtime:
+    name: Deploy Runtime Container App
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Update Container App with new image
+        run: |
+          IMAGE="${{ needs.build-and-push.outputs.acr_login_server }}/${CONTAINER_APP}:${{ needs.build-and-push.outputs.image_tag }}"
+          az containerapp update \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$IMAGE" \
+            --set-env-vars \
+              FOUNDRY_RUNTIME_TOKEN=secretref:foundry-runtime-token \
+              FOUNDRY_SOC_EXECUTE=false \
+              AZURE_OPENAI_DEPLOYMENT=gpt-4o \
+              FOUNDRY_USE_AZURE_AD=true
+
+      - name: Wait for revision to be healthy
+        run: |
+          for i in $(seq 1 12); do
+            STATUS=$(az containerapp revision list \
+              --name "$CONTAINER_APP" \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[0].properties.healthState" -o tsv 2>/dev/null || echo "unknown")
+            echo "Attempt $i: health=$STATUS"
+            [ "$STATUS" = "Healthy" ] && break
+            sleep 10
+          done
+
+      - name: Smoke test — /health endpoint
+        run: |
+          FQDN=$(az containerapp show \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          echo "Runtime URL: https://$FQDN"
+          STATUS=$(curl -sf "https://$FQDN/health" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
+          [ "$STATUS" = "ok" ] || (echo "Health check failed: $STATUS"; exit 1)
+          echo "Health check passed ✅"
+
+  # ─────────────────────────────────────────────────────────────────
+  # Job 3: Redeploy Foundry Agents with Updated OpenAPI Tools
+  # ─────────────────────────────────────────────────────────────────
+  deploy-agents:
+    name: Deploy Foundry Agents
+    runs-on: ubuntu-latest
+    needs: deploy-runtime
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Write .env for agent scripts
+        run: |
+          FQDN=$(az containerapp show \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          SUB="${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          CONN_ID="/subscriptions/${SUB}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.MachineLearningServices/workspaces/project-security-agents/connections/foundry-runtime"
+          cat >> .env << EOF
+          AZURE_SUBSCRIPTION_ID=$SUB
+          AZURE_RESOURCE_GROUP=$RESOURCE_GROUP
+          AZURE_AI_PROJECT=project-security-agents
+          AZURE_OPENAI_DEPLOYMENT=gpt-4o
+          FOUNDRY_RUNTIME_URL=https://$FQDN
+          FOUNDRY_RUNTIME_TOKEN=${{ secrets.FOUNDRY_RUNTIME_TOKEN }}
+          FOUNDRY_RUNTIME_CONNECTION_ID=$CONN_ID
+          EOF
+
+      - name: Upsert Foundry agents (idempotent)
+        run: python3 infrastructure/deploy_agents.py
+
+      - name: Wire runtime OpenAPI tools to all agents
+        run: python3 infrastructure/foundry_orchestrator.py
+
+  # ─────────────────────────────────────────────────────────────────
+  # Job 4: Live Agent Smoke Test
+  # ─────────────────────────────────────────────────────────────────
+  live-smoke-test:
+    name: Live Agent Smoke Test
+    runs-on: ubuntu-latest
+    needs: deploy-agents
+    if: ${{ github.event.inputs.skip_live_test != 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Fetch agent IDs and write .env
+        run: |
+          cat >> .env << EOF
+          AZURE_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_RESOURCE_GROUP=$RESOURCE_GROUP
+          AZURE_AI_PROJECT=project-security-agents
+          AZURE_OPENAI_DEPLOYMENT=gpt-4o
+          FOUNDRY_RUNTIME_TOKEN=${{ secrets.FOUNDRY_RUNTIME_TOKEN }}
+          EOF
+          python3 - << 'PYEOF'
+          import os
+          from pathlib import Path
+          from azure.ai.agents import AgentsClient
+          from azure.identity import DefaultAzureCredential
+          sub = os.environ["AZURE_SUBSCRIPTION_ID"]
+          rg  = os.environ["AZURE_RESOURCE_GROUP"]
+          proj = os.environ["AZURE_AI_PROJECT"]
+          endpoint = (
+              f"https://eastus.api.azureml.ms/agents/v1.0/subscriptions/{sub}"
+              f"/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{proj}"
+          )
+          client = AgentsClient(endpoint=endpoint, credential=DefaultAzureCredential())
+          name_to_env = {
+              "ai-security-engineer": "AI_SECURITY_ENGINEER_ID",
+              "ai-red-team": "AI_RED_TEAM_ID",
+              "ai-runtime-soc": "AI_RUNTIME_SOC_ID",
+          }
+          env_path = Path(".env")
+          lines = env_path.read_text().splitlines()
+          for agent in client.list_agents():
+              if agent.name in name_to_env:
+                  key = name_to_env[agent.name]
+                  lines = [l for l in lines if not l.startswith(f"{key}=")]
+                  lines.append(f"{key}={agent.id}")
+          env_path.write_text("\n".join(lines) + "\n")
+          PYEOF
+
+      - name: Run live agent smoke test
+        run: python3 infrastructure/live_test_agents.py
+
+      - name: Upload live test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foundry-live-test-${{ github.sha }}
+          path: output/foundry-live-test.json
+          retention-days: 30

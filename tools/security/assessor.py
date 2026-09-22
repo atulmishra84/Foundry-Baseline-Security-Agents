@@ -88,9 +88,9 @@ def assess_asset(asset_file: str) -> list[dict]:
             ["Add rate limits (CTRL-007)."],
         ),
         (
-            not asset.get("dependencies"),
+            not any(d for d in asset.get("dependencies", []) if d not in {"json", "logging", "os", "sys"}),
             "T-003",
-            ["Supply-chain inventory is empty; model and MCP dependencies are unknown."],
+            ["Supply-chain inventory lacks pinned third-party model, framework, or MCP dependencies."],
             ["Pin and review dependencies (CTRL-004)."],
         ),
     ]

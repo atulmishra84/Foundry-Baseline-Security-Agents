@@ -14,7 +14,17 @@ def load(rel):
 
 class SchemaTests(unittest.TestCase):
     def test_sot_and_schemas_are_valid_json(self):
-        for folder in ("schemas", "sot/threats", "sot/attacks", "sot/controls", "sot/frameworks"):
+        folders = (
+            "schemas",
+            "sot/threats",
+            "sot/attacks",
+            "sot/controls",
+            "sot/frameworks",
+            "sot/detections",
+            "sot/remediations",
+            "agents/red-team/attack-library",
+        )
+        for folder in folders:
             path = os.path.join(ROOT, folder)
             for name in os.listdir(path):
                 if name.endswith(".json"):

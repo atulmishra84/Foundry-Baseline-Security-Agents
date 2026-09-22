@@ -1,3 +1,7 @@
+"""Runtime SOC Monitoring Engine with multi-vector threat and anomaly detection."""
+
+from __future__ import annotations
+
 import json
 import os
 import sys
@@ -21,32 +25,57 @@ def analyze_evidence(evidence_file: str) -> list[dict]:
     for log in evidence_log:
         response = str(log.get("response", ""))
         request = str(log.get("request", ""))
+        tool_name = str(log.get("tool", ""))
+
         summary = {}
         try:
             summary = json.loads(response) if response.startswith("{") else {}
         except json.JSONDecodeError:
             summary = {}
+
         bulk_dump = bool(summary.get("bulk_dump")) or ("P1001" in response and "P1002" in response)
-        if not bulk_dump:
+        is_elevated_identity = bool(summary.get("elevated")) or ("system-admin" in response.lower())
+
+        incident = None
+
+        if bulk_dump:
+            incident = {
+                "incident_id": f"INC-{str(uuid.uuid4())[:8]}",
+                "title": "Suspected Prompt Injection leading to Data Exfiltration",
+                "status": "NEW",
+                "severity": "CRITICAL",
+                "lineage": [
+                    "User Input",
+                    "HealthcareAIAssistant processing",
+                    f"{tool_name} execution",
+                    "Database dump",
+                ],
+                "related_events": [log["evidence_id"]],
+                "recommendation": (
+                    "Block the requesting user, disable the patient_search tool temporarily, "
+                    "and alert the Security Engineer for remediation."
+                ),
+            }
+        elif is_elevated_identity and "identity" in tool_name.lower():
+            incident = {
+                "incident_id": f"INC-{str(uuid.uuid4())[:8]}",
+                "title": "Excessive Agency: Unconstrained Administrator Identity Detected at Runtime",
+                "status": "NEW",
+                "severity": "CRITICAL",
+                "lineage": [
+                    "Runtime Identity Initialization",
+                    "Assigned 'system-admin-identity'",
+                    "Execution context holds unrestricted administrative permissions",
+                ],
+                "related_events": [log["evidence_id"]],
+                "recommendation": (
+                    "Revoke administrator role and assign scoped least-privilege managed identity (CTRL-005)."
+                ),
+            }
+
+        if not incident:
             continue
 
-        incident = {
-            "incident_id": f"INC-{str(uuid.uuid4())[:8]}",
-            "title": "Suspected Prompt Injection leading to Data Exfiltration",
-            "status": "NEW",
-            "severity": "CRITICAL",
-            "lineage": [
-                "User Input",
-                "HealthcareAIAssistant processing",
-                "patient_search tool execution with None parameters",
-                "Database dump",
-            ],
-            "related_events": [log["evidence_id"]],
-            "recommendation": (
-                "Block the requesting user, disable the patient_search tool temporarily, "
-                "and alert the Security Engineer for remediation."
-            ),
-        }
         llm = chat_json(
             "You are the Runtime SOC agent. Return JSON {\"recommendation\": string} only. Do not include PHI.",
             json.dumps(

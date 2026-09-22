@@ -1,0 +1,10 @@
+{
+  "detection_id": "DET-001",
+  "name": "Prompt Injection Detection",
+  "threat_id": "T-001",
+  "severity": "CRITICAL",
+  "detection_type": "HEURISTIC_AND_SIGNATURE",
+  "pattern": "(?i)(ignore\\s+(all\\s+)?previous\\s+instructions|system\\s+override|disregard\\s+prior\\s+rules)",
+  "description": "Flags input prompts attempting to reset model instructions or override system constraints.",
+  "response_action": "BLOCK_AND_ALERT"
+}

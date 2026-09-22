@@ -1,0 +1,9 @@
+{
+  "remediation_id": "REM-002",
+  "control_id": "CTRL-003-Output-Filtering",
+  "threat_id": "T-002",
+  "title": "Clinical and Personal Data Masking",
+  "type": "CODE_PATCH",
+  "description": "Sanitize and mask all model and tool outputs before transmission to the user or caller.",
+  "patch_template": "def sanitize_output(data):\n    # Redact sensitive names, medical conditions, and emails\n    return redact_text(data)"
+}

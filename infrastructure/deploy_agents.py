@@ -5,12 +5,14 @@ Run: python3 infrastructure/deploy_agents.py
 from pathlib import Path
 
 from azure.ai.agents import AgentsClient
+import os
+
 from azure.identity import DefaultAzureCredential
 
-SUBSCRIPTION_ID = "937d718f-c0b8-458e-9f26-7d69e169c671"
-RESOURCE_GROUP = "rg-ai-security-platform"
-PROJECT_NAME = "project-security-agents"
-MODEL_DEPLOYMENT = "gpt-4o"
+SUBSCRIPTION_ID = os.getenv("AZURE_SUBSCRIPTION_ID", "937d718f-c0b8-458e-9f26-7d69e169c671")
+RESOURCE_GROUP = os.getenv("AZURE_RESOURCE_GROUP", "rg-ai-security-platform")
+PROJECT_NAME = os.getenv("AZURE_AI_PROJECT", "project-security-agents")
+MODEL_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
 
 PROJECT_ENDPOINT = (
     f"https://eastus.api.azureml.ms/agents/v1.0/subscriptions/{SUBSCRIPTION_ID}"

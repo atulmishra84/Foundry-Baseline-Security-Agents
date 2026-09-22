@@ -1,0 +1,9 @@
+{
+  "remediation_id": "REM-004",
+  "control_id": "CTRL-007-Rate-Limits",
+  "threat_id": "T-010",
+  "title": "Token Budgeting and Tool Execution Limits",
+  "type": "CONFIGURATION",
+  "description": "Configure maximum token consumption limits, rate limiting headers, and max execution depth on agent loops.",
+  "patch_template": "max_turns = 10\nmax_tokens_per_call = 2048"
+}

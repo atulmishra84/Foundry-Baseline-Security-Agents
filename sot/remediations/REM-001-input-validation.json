@@ -1,0 +1,9 @@
+{
+  "remediation_id": "REM-001",
+  "control_id": "CTRL-001-Input-Validation",
+  "threat_id": "T-001",
+  "title": "Instruction Boundary and Input Sanitization",
+  "type": "POLICY_AND_CODE",
+  "description": "Enforce strict delimiters between system instructions and untrusted user input. Reject input matching prompt override signatures.",
+  "patch_template": "if any(pat in user_prompt.lower() for pat in ['ignore all previous', 'system override']):\n    raise ValueError('Potential prompt injection detected')"
+}

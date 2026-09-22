@@ -1,0 +1,9 @@
+{
+  "remediation_id": "REM-003",
+  "control_id": "CTRL-005-Least-Privilege",
+  "threat_id": "T-006",
+  "title": "Least-Privilege Identity and Tool Scope Enforcement",
+  "type": "RBAC",
+  "description": "Downgrade runtime managed identities from administrative privileges to read-only or task-specific scoped roles.",
+  "patch_template": "self.managed_identity = 'healthcare-reader-identity'"
+}

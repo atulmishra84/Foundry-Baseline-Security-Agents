@@ -1,0 +1,13 @@
+{
+  "detection_id": "DET-004",
+  "name": "Unbounded Consumption Detection",
+  "threat_id": "T-010",
+  "severity": "MEDIUM",
+  "detection_type": "RATE_AND_RESOURCE_MONITOR",
+  "threshold": {
+    "max_requests_per_minute": 60,
+    "max_tool_calls_per_turn": 5
+  },
+  "description": "Detects runaway loops or denial-of-wallet attempts exceeding permitted agent resource thresholds.",
+  "response_action": "THROTTLE"
+}

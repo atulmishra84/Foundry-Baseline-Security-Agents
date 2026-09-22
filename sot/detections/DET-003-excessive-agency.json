@@ -1,0 +1,10 @@
+{
+  "detection_id": "DET-003",
+  "name": "Excessive Agency Detection",
+  "threat_id": "T-006",
+  "severity": "CRITICAL",
+  "detection_type": "RBAC_ANOMALY",
+  "pattern": "(?i)(system-admin|elevated-role|root|unauthorized_tool)",
+  "description": "Flags runtime attempts by an agent or user to execute sensitive tools with excessive administrator identities.",
+  "response_action": "ENFORCE_LEAST_PRIVILEGE"
+}

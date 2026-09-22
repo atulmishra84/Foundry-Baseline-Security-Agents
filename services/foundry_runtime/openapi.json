@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "Foundry AI Security Runtime",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "servers": [
     {
@@ -17,16 +17,52 @@
         "in": "header",
         "name": "Authorization"
       }
+    },
+    "schemas": {
+      "StageStatus": {
+        "type": "object",
+        "properties": {
+          "id":       { "type": "integer" },
+          "name":     { "type": "string" },
+          "agent":    { "type": "string" },
+          "status":   { "type": "string", "enum": ["COMPLETE", "RUNNING", "PENDING"] },
+          "summary":  { "type": "string" },
+          "artifact": { "type": "string" }
+        }
+      },
+      "ContainmentApprovalRequest": {
+        "type": "object",
+        "required": ["incident_id"],
+        "properties": {
+          "incident_id":  { "type": "string", "description": "Incident ID to approve containment for" },
+          "approved_by":  { "type": "string", "default": "security-engineer-ui" },
+          "action":       { "type": "string", "default": "disable_service_principal" }
+        }
+      }
     }
   },
   "paths": {
     "/health": {
       "get": {
         "operationId": "health",
-        "summary": "Runtime health",
+        "summary": "Runtime health check — call first before any lifecycle operation",
         "security": [],
         "responses": {
-          "200": { "description": "OK" }
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status":    { "type": "string" },
+                    "ecosystem": { "type": "string" },
+                    "version":   { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -39,10 +75,70 @@
         }
       }
     },
+    "/v1/stages": {
+      "get": {
+        "operationId": "getPipelineStages",
+        "summary": "Return the status of each of the 5 security pipeline stages",
+        "description": "Returns COMPLETE, RUNNING, or PENDING for each stage: Asset Discovery, Threat Assessment, Red Team Validation, Runtime SOC Monitoring, and Remediation & Retest. Use this to summarize overall pipeline progress to the user.",
+        "responses": {
+          "200": {
+            "description": "Stage status for all 5 pipeline stages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "stages": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/StageStatus" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/containment/approve": {
+      "post": {
+        "operationId": "approveContainment",
+        "summary": "Approve a human-reviewed containment action for a detected incident",
+        "description": "Writes an audit-logged approval record for the specified incident_id. This represents human-in-the-loop approval before any destructive containment action (e.g. disabling a service principal). Only call after explicit human confirmation.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ContainmentApprovalRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Containment approved and audit record written",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status":       { "type": "string" },
+                    "incident_id":  { "type": "string" },
+                    "approved_by":  { "type": "string" },
+                    "action":       { "type": "string" },
+                    "approval_file":{ "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/lifecycle": {
       "post": {
         "operationId": "runLifecycle",
-        "summary": "Run discover-assess-remediate-validate-detect on the authorized demo only",
+        "summary": "Run the full 5-stage security lifecycle on the authorized demo only",
+        "description": "Executes: Asset Discovery → Threat Assessment → Red Team Validation → Runtime SOC → Remediation & Retest. Returns correlation_id, finding/attack/incident counts, retest_blocked status, and a dashboard URL.",
         "parameters": [
           {
             "name": "retest",
@@ -52,9 +148,29 @@
           }
         ],
         "responses": {
-          "200": { "description": "Lifecycle result with finding, attack, incident, retest_blocked counts" }
+          "200": {
+            "description": "Lifecycle result with finding, attack, incident, retest_blocked counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "correlation_id":  { "type": "string" },
+                    "findings":        { "type": "integer" },
+                    "remediations":    { "type": "integer" },
+                    "attacks":         { "type": "integer" },
+                    "incidents":       { "type": "integer" },
+                    "retest_blocked":  { "type": "boolean" },
+                    "dashboard":       { "type": "string" },
+                    "artifacts":       { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
   }
 }
+

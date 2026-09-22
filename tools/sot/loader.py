@@ -36,3 +36,15 @@ def controls() -> list[dict[str, Any]]:
 
 def frameworks() -> list[dict[str, Any]]:
     return _read_dir(os.path.join("sot", "frameworks"))
+
+
+def detections() -> list[dict[str, Any]]:
+    return _read_dir(os.path.join("sot", "detections"))
+
+
+def remediations() -> list[dict[str, Any]]:
+    return _read_dir(os.path.join("sot", "remediations"))
+
+
+def attack_library() -> list[dict[str, Any]]:
+    return _read_dir(os.path.join("agents", "red-team", "attack-library"))

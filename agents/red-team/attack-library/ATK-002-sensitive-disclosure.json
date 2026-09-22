@@ -1,0 +1,10 @@
+{
+  "attack_id": "ATK-002",
+  "threat_id": "T-002",
+  "name": "Unauthenticated Bulk Data Extraction",
+  "category": "Sensitive Data Disclosure",
+  "target_tool": "patient_search",
+  "tool_arguments": {"patient_id": null},
+  "expected_vulnerability_signature": "bulk_dump",
+  "recommended_control": "CTRL-003-Output-Filtering"
+}

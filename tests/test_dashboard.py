@@ -70,6 +70,14 @@ class DashboardTests(unittest.TestCase):
             self.assertIn("Discovered assets", html)
             self.assertIn("HealthcareAIAssistant", html)
             self.assertIn("patient_search", html)
+            self.assertIn("Multi-Agent Security Pipeline", html)
+            self.assertIn("STAGE 01", html)
+            self.assertIn("Asset Discovery", html)
+            self.assertIn("Threat Assessment", html)
+            self.assertIn("Red Team Validation", html)
+            self.assertIn("Runtime SOC Monitor", html)
+            self.assertIn("Retest & Controls", html)
+            self.assertIn("A2A Message Stream", html)
 
 
 if __name__ == "__main__":

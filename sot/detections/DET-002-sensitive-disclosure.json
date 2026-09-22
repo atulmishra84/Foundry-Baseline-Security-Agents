@@ -1,0 +1,10 @@
+{
+  "detection_id": "DET-002",
+  "name": "Sensitive Data Disclosure Detection",
+  "threat_id": "T-002",
+  "severity": "HIGH",
+  "detection_type": "DATA_LEAK_PREVENTION",
+  "pattern": "(?i)(\\bP\\d{4}\\b.*\\b(hypertension|diabetes|asthma|lisinopril|metformin|albuterol)\\b|[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,})",
+  "description": "Monitors tool and agent output for unmasked clinical identifiers (PHI) or personal data (PII).",
+  "response_action": "REDACT_AND_LOG"
+}
